@@ -37,10 +37,30 @@
       </div>
       <div id="equipmentList" class="equipment-list"></div>
       <button id="addBtn" class="primary sticky">＋ Añadir extintor</button>
+      <button id="importBtn" class="wide-secondary import-button">⇩ Importar desde ChatGPT</button>
       <div class="actions">
         <button id="downloadBtn" class="wide-secondary">Generar Excel oficial</button>
         <button id="finishBtn" class="text-button">Finalizar y guardar trabajo</button>
       </div>
+    </section>
+
+    <section id="importView" class="view">
+      <div class="work-title">
+        <button class="back" data-view="workView" aria-label="Volver">←</button>
+        <div><small>IMPORTACIÓN</small><h2>Desde ChatGPT</h2></div>
+      </div>
+      <div class="card section-card import-help">
+        <h3>1. Da estas instrucciones a ChatGPT</h3>
+        <p>Pulsa el botón y pega las instrucciones en la conversación donde has dictado los extintores.</p>
+        <button id="copyImportPrompt" class="wide-secondary">Copiar instrucciones para ChatGPT</button>
+      </div>
+      <div class="card section-card">
+        <h3>2. Pega aquí el resultado</h3>
+        <p class="field-help">Copia todo el bloque que te entregue ChatGPT. Puedes importar varios extintores a la vez.</p>
+        <textarea id="importText" class="import-text" rows="12" placeholder='[{"syco":"579","placa":"6788080","modelo":"6 K","fabricacion":"12-23","retimbrado":"-","senal":"25","observaciones":[]}]'></textarea>
+        <button id="processImport" class="primary">Importar registros</button>
+      </div>
+      <div class="privacy-note">Los datos se procesan únicamente en este dispositivo.</div>
     </section>
 
     <section id="formView" class="view">
@@ -50,8 +70,8 @@
       </div>
 
       <div class="voice-banner">
-        <div><strong>Dictar la pegatina</strong><p>Ej.: “SYCO 579, placa 6788080, modelo 6 K…”</p></div>
-        <button id="dictateLabel" class="mic" aria-label="Dictar pegatina">🎙</button>
+        <div><strong>Dictar todos los datos</strong><p>SYCo, placa, modelo, fechas, señal y defectos.</p></div>
+        <button id="dictateLabel" class="mic" aria-label="Dictar todos los datos">🎙</button>
       </div>
 
       <form id="equipmentForm">
@@ -63,7 +83,7 @@
           </label>
           <div class="grid two">
             <label>Número SYCo <span>*</span><input id="syco" inputmode="numeric" required></label>
-            <label>N.º de placa <span>*</span><input id="plate" inputmode="numeric" required></label>
+            <label>N.º de placa <span>*</span><span class="input-with-mic"><input id="plate" inputmode="numeric" required><button id="dictatePlate" type="button" class="mic small" aria-label="Dictar solo la placa">🎙</button></span></label>
           </div>
           <label>Modelo <span>*</span>
             <select id="model" required>
@@ -72,12 +92,12 @@
               <option>ABC 6 KG</option><option>ABC 9 KG</option><option>CO2 2 KG</option><option>CO2 5 KG</option>
             </select>
           </label>
-          <div class="grid two">
-            <label>Fabricación <span>*</span><input id="manufacture" placeholder="MM-AAAA" inputmode="numeric" required></label>
-            <label>Retimbrado<input id="retest" placeholder="MM-AAAA o -" inputmode="numeric"></label>
+          <div class="grid two date-grid">
+            <fieldset><legend>Fabricación <span>*</span></legend><div class="date-selects"><select id="manufactureMonth" aria-label="Mes de fabricación"></select><select id="manufactureYear" aria-label="Año de fabricación"></select></div><input id="manufacture" type="hidden"></fieldset>
+            <fieldset><legend>Retimbrado</legend><div class="date-selects"><select id="retestMonth" aria-label="Mes de retimbrado"></select><select id="retestYear" aria-label="Año de retimbrado"></select></div><input id="retest" type="hidden"></fieldset>
           </div>
           <label>Señal
-            <select id="signal"><option value="S">Sin señal</option><option value="C">Señal caducada</option><option>2021</option><option>2022</option><option>2023</option><option>2024</option><option>2025</option></select>
+            <select id="signal"><option value="S">Sin señal</option><option value="C">Señal caducada</option><option>2018</option><option>2019</option><option>2020</option><option>2021</option><option>2022</option><option>2023</option><option>2024</option><option>2025</option><option>2026</option></select>
           </label>
           <div class="calculated"><span>Caducidad 20 años</span><strong id="expiry">—</strong></div>
         </div>
@@ -88,14 +108,23 @@
             <label>Foto 1<input class="equipment-photo" data-index="0" type="file" accept="image/*" capture="environment"><span class="photo-placeholder">＋</span></label>
             <label>Foto 2<input class="equipment-photo" data-index="1" type="file" accept="image/*" capture="environment"><span class="photo-placeholder">＋</span></label>
             <label>Foto 3<input class="equipment-photo" data-index="2" type="file" accept="image/*" capture="environment"><span class="photo-placeholder">＋</span></label>
+            <label>Foto adicional<input class="equipment-photo" data-index="3" type="file" accept="image/*" capture="environment"><span class="photo-placeholder">＋</span></label>
           </div>
         </div>
 
         <div class="card section-card">
-          <h3>Observaciones</h3>
-          <div class="observation"><textarea id="obs1" rows="2" placeholder="Observación 1"></textarea><button type="button" class="mic small" data-target="obs1">🎙</button></div>
-          <div class="observation"><textarea id="obs2" rows="2" placeholder="Observación 2"></textarea><button type="button" class="mic small" data-target="obs2">🎙</button></div>
-          <div class="observation"><textarea id="obs3" rows="2" placeholder="Observación 3"></textarea><button type="button" class="mic small" data-target="obs3">🎙</button></div>
+          <h3>Defectos encontrados</h3>
+          <p class="field-help">Puedes seleccionar varios al mismo tiempo.</p>
+          <div class="defect-list">
+            <label><input type="checkbox" name="defect" value="Extintor caducado."><span>Extintor caducado</span></label>
+            <label><input type="checkbox" name="defect" value="Hay un obstáculo."><span>Hay un obstáculo</span></label>
+            <label><input type="checkbox" name="defect" value="Extintor descargado."><span>Extintor descargado</span></label>
+            <label><input type="checkbox" name="defect" value="Extintor sin presión."><span>Extintor sin presión</span></label>
+            <label><input type="checkbox" name="defect" value="Extintor en el suelo."><span>Extintor en el suelo</span></label>
+            <label><input type="checkbox" name="defect" value="Cristal del extintor ausente o roto."><span>Cristal ausente o roto</span></label>
+          </div>
+          <h3 class="other-title">Otra observación</h3>
+          <div class="observation"><textarea id="otherObservation" rows="3" placeholder="Escribir o dictar otra observación"></textarea><button type="button" class="mic small" data-target="otherObservation">🎙</button></div>
         </div>
         <button type="submit" class="primary">Guardar extintor</button>
         <button id="deleteEquipment" type="button" class="danger hidden">Eliminar este extintor</button>
