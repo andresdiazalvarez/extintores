@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#b91c1c">
+  <title>Extintores</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand"><img src="icon.svg" alt=""><span>Extintores</span></div>
+    <button id="installBtn" class="ghost hidden">Instalar</button>
+  </header>
+
+  <main>
+    <section id="homeView" class="view active">
+      <div class="hero">
+        <span class="eyebrow">CONTROL DE EXTINTORES</span>
+        <h1>Un informe limpio,<br>desde el móvil.</h1>
+        <p>Fotografía, dicta y genera el Excel oficial sin volver a copiar los datos.</p>
+      </div>
+      <div class="card">
+        <label>Cliente <span>*</span><input id="client" placeholder="Ej.: D. Benito. Colegio" autocomplete="organization"></label>
+        <label>Operario <span>*</span><input id="operator" placeholder="Nombre del operario" autocomplete="name"></label>
+        <button id="startBtn" class="primary">Comenzar revisión</button>
+      </div>
+      <button id="historyBtn" class="wide-secondary">Ver trabajos guardados <span id="historyCount">0</span></button>
+    </section>
+
+    <section id="workView" class="view">
+      <div class="work-title">
+        <button class="back" data-view="homeView" aria-label="Volver">←</button>
+        <div><small id="workClient"></small><h2>Extintores <span id="equipmentCount">0</span></h2></div>
+      </div>
+      <div id="equipmentList" class="equipment-list"></div>
+      <button id="addBtn" class="primary sticky">＋ Añadir extintor</button>
+      <div class="actions">
+        <button id="downloadBtn" class="wide-secondary">Generar Excel oficial</button>
+        <button id="finishBtn" class="text-button">Finalizar y guardar trabajo</button>
+      </div>
+    </section>
+
+    <section id="formView" class="view">
+      <div class="work-title">
+        <button class="back" data-view="workView" aria-label="Volver">←</button>
+        <div><small>REGISTRO</small><h2 id="formTitle">Nuevo extintor</h2></div>
+      </div>
+
+      <div class="voice-banner">
+        <div><strong>Dictar la pegatina</strong><p>Ej.: “SYCO 579, placa 6788080, modelo 6 K…”</p></div>
+        <button id="dictateLabel" class="mic" aria-label="Dictar pegatina">🎙</button>
+      </div>
+
+      <form id="equipmentForm">
+        <div class="card section-card">
+          <h3>Datos de la pegatina</h3>
+          <label class="photo-field">Foto de la pegatina
+            <input id="labelPhoto" type="file" accept="image/*" capture="environment">
+            <span id="labelPhotoPreview" class="photo-placeholder">＋ Hacer foto</span>
+          </label>
+          <div class="grid two">
+            <label>Número SYCo <span>*</span><input id="syco" inputmode="numeric" required></label>
+            <label>N.º de placa <span>*</span><input id="plate" inputmode="numeric" required></label>
+          </div>
+          <label>Modelo <span>*</span>
+            <select id="model" required>
+              <option value="">Seleccionar</option><option>ABC 1 KG</option><option>ABC 2 KG</option>
+              <option>ABC 3 KG</option><option>ABC 4 KG</option><option>ABC 5 KG</option>
+              <option>ABC 6 KG</option><option>ABC 9 KG</option><option>CO2 2 KG</option><option>CO2 5 KG</option>
+            </select>
+          </label>
+          <div class="grid two">
+            <label>Fabricación <span>*</span><input id="manufacture" placeholder="MM-AAAA" inputmode="numeric" required></label>
+            <label>Retimbrado<input id="retest" placeholder="MM-AAAA o -" inputmode="numeric"></label>
+          </div>
+          <label>Señal
+            <select id="signal"><option value="S">Sin señal</option><option value="C">Señal caducada</option><option>2021</option><option>2022</option><option>2023</option><option>2024</option><option>2025</option></select>
+          </label>
+          <div class="calculated"><span>Caducidad 20 años</span><strong id="expiry">—</strong></div>
+        </div>
+
+        <div class="card section-card">
+          <h3>Fotos del extintor</h3>
+          <div class="photo-grid">
+            <label>Foto 1<input class="equipment-photo" data-index="0" type="file" accept="image/*" capture="environment"><span class="photo-placeholder">＋</span></label>
+            <label>Foto 2<input class="equipment-photo" data-index="1" type="file" accept="image/*" capture="environment"><span class="photo-placeholder">＋</span></label>
+            <label>Foto 3<input class="equipment-photo" data-index="2" type="file" accept="image/*" capture="environment"><span class="photo-placeholder">＋</span></label>
+          </div>
+        </div>
+
+        <div class="card section-card">
+          <h3>Observaciones</h3>
+          <div class="observation"><textarea id="obs1" rows="2" placeholder="Observación 1"></textarea><button type="button" class="mic small" data-target="obs1">🎙</button></div>
+          <div class="observation"><textarea id="obs2" rows="2" placeholder="Observación 2"></textarea><button type="button" class="mic small" data-target="obs2">🎙</button></div>
+          <div class="observation"><textarea id="obs3" rows="2" placeholder="Observación 3"></textarea><button type="button" class="mic small" data-target="obs3">🎙</button></div>
+        </div>
+        <button type="submit" class="primary">Guardar extintor</button>
+        <button id="deleteEquipment" type="button" class="danger hidden">Eliminar este extintor</button>
+      </form>
+    </section>
+
+    <section id="historyView" class="view">
+      <div class="work-title"><button class="back" data-view="homeView">←</button><div><small>HISTORIAL</small><h2>Trabajos guardados</h2></div></div>
+      <div id="historyList" class="equipment-list"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
