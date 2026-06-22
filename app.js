@@ -6,6 +6,7 @@ let pendingPhotos = { label: '', equipment: ['', '', '', ''] };
 let currentPhotoType = '';
 let photoRecordPhotos = ['', ''];
 let photoRecordsCache = [];
+let selectedPhotoRecord = null;
 let deferredInstall;
 
 const CHATGPT_IMPORT_PROMPT = `Convierte todos los extintores que te he dictado en un JSON válido para mi aplicación. Devuelve exclusivamente el JSON, sin explicaciones y sin bloques Markdown. Debe ser una lista con este formato exacto:
@@ -59,6 +60,7 @@ const getJobs = () => dbAction('readonly', store => store.getAll());
 const deleteJob = id => dbAction('readwrite', store => store.delete(id));
 const savePhotoRecord = record => dbAction('readwrite', store => store.put(record), 'photoRecords');
 const getPhotoRecords = () => dbAction('readonly', store => store.getAll(), 'photoRecords');
+const removePhotoRecord = id => dbAction('readwrite', store => store.delete(id), 'photoRecords');
 const createId = () => globalThis.crypto?.randomUUID?.() || `trabajo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 function initializeDateSelectors() {
@@ -266,8 +268,32 @@ function renderPhotoRecords() {
     const defects = (record.defects || []).map(escapeHtml).join('<br>') || '—';
     const photos = (record.photos || []).filter(Boolean).length;
     const date = record.createdAt ? new Date(record.createdAt).toLocaleDateString('es-ES') : '—';
-    return `<tr><td>${escapeHtml(record.building)}</td><td><strong>${escapeHtml(record.number)}</strong></td><td>${escapeHtml(record.other1 || '—')}</td><td>${escapeHtml(record.other2 || '—')}</td><td>${defects}</td><td>${photos}</td><td>${date}</td></tr>`;
+    return `<tr><td>${escapeHtml(record.building)}</td><td><strong>${escapeHtml(record.number)}</strong></td><td>${escapeHtml(record.other1 || '—')}</td><td>${escapeHtml(record.other2 || '—')}</td><td>${defects}</td><td>${photos}</td><td>${date}</td><td><button type="button" class="view-record" data-record-id="${escapeHtml(record.id)}">Ver</button></td></tr>`;
   }).join('');
+}
+
+function openPhotoRecordDetail(id) {
+  const record = photoRecordsCache.find(item => item.id === id);
+  if (!record) return toast('No se ha encontrado este registro');
+  selectedPhotoRecord = record;
+  $('photoDetailType').textContent = record.type === 'bie' ? 'REGISTRO BIE' : 'REGISTRO EXTINTOR';
+  $('photoDetailTitle').textContent = `${record.type === 'bie' ? 'BIE' : 'Extintor'} ${record.number}`;
+  $('photoDetailBuilding').textContent = record.building || '—';
+  $('photoDetailNumber').textContent = record.number || '—';
+  $('photoDetailOther1').textContent = record.other1 || '—';
+  $('photoDetailOther2').textContent = record.other2 || '—';
+  $('photoDetailDate').textContent = record.createdAt ? new Date(record.createdAt).toLocaleString('es-ES') : '—';
+  $('photoDetailDefects').innerHTML = (record.defects || []).length ? record.defects.map(defect => `<li>${escapeHtml(defect)}</li>`).join('') : '<li>Sin defectos marcados</li>';
+  const container = $('photoDetailImages');
+  container.innerHTML = '';
+  const photos = (record.photos || []).filter(Boolean);
+  if (!photos.length) container.innerHTML = '<div class="empty-photo">Este registro no tiene fotografías.</div>';
+  photos.forEach((photo, index) => {
+    const image = document.createElement('img');
+    image.src = photo; image.alt = `Foto ${index + 1} del registro`;
+    container.append(image);
+  });
+  showView('photoRecordDetailView');
 }
 
 function refreshRecordPhotoPreviews() {
@@ -435,6 +461,22 @@ $('photoExtinguisherBtn').onclick = () => openPhotoForm('extinguisher');
 $('photoBieBtn').onclick = () => openPhotoForm('bie');
 $('viewPhotoRecords').onclick = openPhotoRecords;
 $('photoNumberFilter').addEventListener('input', renderPhotoRecords);
+$('photoRecordsBody').onclick = event => {
+  const button = event.target.closest('.view-record');
+  if (button) openPhotoRecordDetail(button.dataset.recordId);
+};
+$('deletePhotoRecord').onclick = async () => {
+  if (!selectedPhotoRecord) return;
+  const label = `${selectedPhotoRecord.type === 'bie' ? 'BIE' : 'extintor'} ${selectedPhotoRecord.number}`;
+  if (!confirm(`¿Eliminar definitivamente el registro de ${label}? También se borrarán sus fotografías.`)) return;
+  try {
+    await removePhotoRecord(selectedPhotoRecord.id);
+    photoRecordsCache = photoRecordsCache.filter(record => record.id !== selectedPhotoRecord.id);
+    selectedPhotoRecord = null;
+    renderPhotoRecords(); showView('photoRecordsView');
+    toast('Registro eliminado');
+  } catch { toast('No se pudo eliminar el registro'); }
+};
 document.querySelectorAll('.record-photo-input').forEach(input => input.onchange = event => readRecordPhoto(event.target));
 [0, 1].forEach(index => {
   $(`deleteRecordPhoto${index}`).onclick = () => {

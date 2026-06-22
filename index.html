@@ -188,11 +188,38 @@
       </div>
       <div class="records-table-wrap">
         <table class="records-table">
-          <thead><tr><th>Edificio</th><th>Número</th><th>Otro 1</th><th>Otro 2</th><th>Defectos</th><th>Fotos</th><th>Fecha</th></tr></thead>
+          <thead><tr><th>Edificio</th><th>Número</th><th>Otro 1</th><th>Otro 2</th><th>Defectos</th><th>Fotos</th><th>Fecha</th><th>Acciones</th></tr></thead>
           <tbody id="photoRecordsBody"></tbody>
         </table>
         <div id="photoRecordsEmpty" class="empty hidden">No hay registros que coincidan.</div>
       </div>
+    </section>
+
+    <section id="photoRecordDetailView" class="view">
+      <div class="work-title">
+        <button class="back" data-view="photoRecordsView" aria-label="Volver">←</button>
+        <div><small id="photoDetailType">REGISTRO</small><h2 id="photoDetailTitle">Equipo</h2></div>
+      </div>
+      <div class="card section-card detail-data">
+        <h3>Datos del registro</h3>
+        <dl>
+          <div><dt>Edificio</dt><dd id="photoDetailBuilding"></dd></div>
+          <div><dt>Número</dt><dd id="photoDetailNumber"></dd></div>
+          <div><dt>Otro 1</dt><dd id="photoDetailOther1"></dd></div>
+          <div><dt>Otro 2</dt><dd id="photoDetailOther2"></dd></div>
+          <div><dt>Fecha</dt><dd id="photoDetailDate"></dd></div>
+        </dl>
+      </div>
+      <div class="card section-card">
+        <h3>Defectos encontrados</h3>
+        <ul id="photoDetailDefects" class="detail-defects"></ul>
+      </div>
+      <div class="card section-card">
+        <h3>Fotografías</h3>
+        <div id="photoDetailImages" class="detail-images"></div>
+      </div>
+      <button id="deletePhotoRecord" type="button" class="danger">Eliminar registro</button>
+      <button type="button" class="wide-secondary" data-view="photoRecordsView">Volver atrás</button>
     </section>
 
     <section id="historyView" class="view">
