@@ -114,6 +114,10 @@
 .detail-images { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .detail-images img { width: 100%; max-height: 420px; object-fit: contain; border: 1px solid var(--line); border-radius: 12px; background: #eee8e3; }
 .detail-images .empty-photo { grid-column: 1/-1; color: var(--muted); text-align: center; padding: 25px; border: 1px dashed var(--line); border-radius: 12px; }
+.detail-photo-slot { display: grid; gap: 8px; align-content: start; }
+.detail-photo-slot .empty-photo { min-height: 150px; display: grid; place-items: center; }
+.replace-photo { display: block; margin: 0; padding: 10px; border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--dark); text-align: center; font-weight: 800; cursor: pointer; }
+.replace-photo input { display: none; }
 
 @media (max-width: 440px) {
   .type-options, .record-photo-grid { grid-template-columns: 1fr; }

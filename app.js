@@ -284,16 +284,61 @@ function openPhotoRecordDetail(id) {
   $('photoDetailOther2').textContent = record.other2 || '—';
   $('photoDetailDate').textContent = record.createdAt ? new Date(record.createdAt).toLocaleString('es-ES') : '—';
   $('photoDetailDefects').innerHTML = (record.defects || []).length ? record.defects.map(defect => `<li>${escapeHtml(defect)}</li>`).join('') : '<li>Sin defectos marcados</li>';
+  renderDetailPhotos();
+  showView('photoRecordDetailView');
+}
+
+function renderDetailPhotos() {
   const container = $('photoDetailImages');
   container.innerHTML = '';
-  const photos = (record.photos || []).filter(Boolean);
-  if (!photos.length) container.innerHTML = '<div class="empty-photo">Este registro no tiene fotografías.</div>';
+  const photos = [...(selectedPhotoRecord?.photos || []), '', ''].slice(0, 2);
   photos.forEach((photo, index) => {
-    const image = document.createElement('img');
-    image.src = photo; image.alt = `Foto ${index + 1} del registro`;
-    container.append(image);
+    const slot = document.createElement('div');
+    slot.className = 'detail-photo-slot';
+    if (photo) {
+      const image = document.createElement('img');
+      image.src = photo; image.alt = `Foto ${index + 1} del registro`;
+      slot.append(image);
+    } else {
+      const empty = document.createElement('div');
+      empty.className = 'empty-photo'; empty.textContent = `Foto ${index + 1} sin cargar`;
+      slot.append(empty);
+    }
+    const changeLabel = document.createElement('label');
+    changeLabel.className = 'replace-photo';
+    changeLabel.textContent = photo ? 'Cambiar foto' : 'Añadir foto';
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*'; input.setAttribute('capture', 'environment');
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try { await updateDetailPhoto(index, await compressImage(file)); toast(`Foto ${index + 1} guardada`); }
+      catch { toast('No se pudo guardar esta fotografía'); }
+    };
+    changeLabel.append(input); slot.append(changeLabel);
+    const remove = document.createElement('button');
+    remove.type = 'button'; remove.className = 'delete-photo'; remove.textContent = 'Eliminar foto'; remove.disabled = !photo;
+    remove.onclick = async () => {
+      if (!confirm(`¿Eliminar la foto ${index + 1} de este registro?`)) return;
+      try { await updateDetailPhoto(index, ''); toast(`Foto ${index + 1} eliminada`); }
+      catch { toast('No se pudo eliminar esta fotografía'); }
+    };
+    slot.append(remove); container.append(slot);
   });
-  showView('photoRecordDetailView');
+}
+
+async function updateDetailPhoto(index, value) {
+  if (!selectedPhotoRecord) throw new Error('Registro no seleccionado');
+  const previous = [...(selectedPhotoRecord.photos || [])];
+  const updated = [...previous, '', ''].slice(0, 2);
+  updated[index] = value;
+  selectedPhotoRecord.photos = updated;
+  try {
+    await savePhotoRecord(selectedPhotoRecord);
+    photoRecordsCache = photoRecordsCache.map(record => record.id === selectedPhotoRecord.id ? selectedPhotoRecord : record);
+    renderPhotoRecords();
+    renderDetailPhotos();
+  } catch (error) { selectedPhotoRecord.photos = previous; throw error; }
 }
 
 function refreshRecordPhotoPreviews() {
