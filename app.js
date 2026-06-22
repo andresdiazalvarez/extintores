@@ -454,6 +454,58 @@ function setCell(xml, ref, value) {
   return xml.replace(rowPattern, `$1$2${cell}$3`);
 }
 
+function excelColumn(index) {
+  let result = '', value = index + 1;
+  while (value > 0) { value--; result = String.fromCharCode(65 + (value % 26)) + result; value = Math.floor(value / 26); }
+  return result;
+}
+
+function xlsxInlineCell(ref, value, style, prefix = '') {
+  return `<${prefix}c r="${ref}"${style ? ` s="${style}"` : ''} t="inlineStr"><${prefix}is><${prefix}t xml:space="preserve">${escapeXml(value)}</${prefix}t></${prefix}is></${prefix}c>`;
+}
+
+async function generatePhotoRecordsExcel() {
+  if (!photoRecordsCache.length) return toast('No hay registros para descargar');
+  try {
+    const { unzipSync, zipSync, strFromU8, strToU8 } = await import('./vendor/fflate.js');
+    const response = await fetch('./Plantilla_Registros_Fotos.xlsx');
+    if (!response.ok) throw new Error('No se encontró la plantilla Excel');
+    const files = unzipSync(new Uint8Array(await response.arrayBuffer()));
+    const sheetPath = 'xl/worksheets/sheet1.xml';
+    let xml = strFromU8(files[sheetPath]);
+    const prefix = xml.includes('<x:worksheet') ? 'x:' : '';
+    const cellTag = ref => xml.match(new RegExp(`<(?:x:)?c\\b[^>]*\\br="${ref}"[^>]*>`))?.[0] || '';
+    const styleOf = ref => cellTag(ref).match(/\bs="([^"]+)"/)?.[1] || '';
+    const headerStyle = styleOf('A1'), dataStyle = styleOf('A2');
+    const defects = PHOTO_DEFECTS[currentPhotoType];
+    const headers = ['Fecha', 'Edificio', 'Número', 'Otro 1', 'Otro 2', ...defects.map(defect => defect.replace(/\.$/, '')), 'Foto 1', 'Foto 2'];
+    const rows = [headers, ...photoRecordsCache.map(record => [
+      record.createdAt ? new Date(record.createdAt).toLocaleString('es-ES') : '',
+      record.building || '', record.number || '', record.other1 || '', record.other2 || '',
+      ...defects.map(defect => (record.defects || []).includes(defect) ? 'X' : ''),
+      record.photos?.[0] ? 'Sí' : 'No', record.photos?.[1] ? 'Sí' : 'No'
+    ])];
+    const sheetData = rows.map((row, rowIndex) => {
+      const rowNumber = rowIndex + 1, style = rowIndex === 0 ? headerStyle : dataStyle;
+      const cells = row.map((value, columnIndex) => xlsxInlineCell(`${excelColumn(columnIndex)}${rowNumber}`, value, style, prefix)).join('');
+      return `<${prefix}row r="${rowNumber}"${rowIndex === 0 ? ' ht="34" customHeight="1"' : ''}>${cells}</${prefix}row>`;
+    }).join('');
+    xml = xml.replace(/<(?:x:)?sheetData>[\s\S]*?<\/(?:x:)?sheetData>/, `<${prefix}sheetData>${sheetData}</${prefix}sheetData>`);
+    const lastColumn = excelColumn(headers.length - 1), lastRow = rows.length;
+    xml = xml.replace(/<(?:x:)?dimension ref="[^"]+"\s*\/>/, `<${prefix}dimension ref="A1:${lastColumn}${lastRow}"/>`);
+    xml = xml.replace(/<(?:x:)?autoFilter ref="[^"]+"\s*\/>/g, '');
+    xml = xml.replace(`</${prefix}worksheet>`, `<${prefix}autoFilter ref="A1:${lastColumn}${lastRow}"/></${prefix}worksheet>`);
+    files[sheetPath] = strToU8(xml);
+    const blob = new Blob([zipSync(files, { level: 6 })], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const typeName = currentPhotoType === 'bie' ? 'BIE' : 'Extintores';
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `Registros_${typeName}_${new Date().toISOString().slice(0,10)}.xlsx`;
+    link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 2000);
+    toast(`Excel de ${typeName} generado`);
+  } catch (error) { toast(error.message || 'No se pudo generar el Excel'); }
+}
+
 async function generateExcel(job) {
   if (!job.equipment.length) return toast('Añade al menos un extintor');
   const { unzipSync, zipSync, strFromU8, strToU8 } = await import('./vendor/fflate.js');
@@ -506,6 +558,7 @@ $('photoExtinguisherBtn').onclick = () => openPhotoForm('extinguisher');
 $('photoBieBtn').onclick = () => openPhotoForm('bie');
 $('viewPhotoRecords').onclick = openPhotoRecords;
 $('photoNumberFilter').addEventListener('input', renderPhotoRecords);
+$('downloadPhotoRecordsExcel').onclick = generatePhotoRecordsExcel;
 $('photoRecordsBody').onclick = event => {
   const button = event.target.closest('.view-record');
   if (button) openPhotoRecordDetail(button.dataset.recordId);
