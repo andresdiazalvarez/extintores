@@ -8,6 +8,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="photos.css">
 </head>
 <body>
   <header class="app-header">
@@ -27,6 +28,7 @@
         <label>Operario <span>*</span><input id="operator" placeholder="Nombre del operario" autocomplete="name"></label>
         <button id="startBtn" class="primary">Comenzar revisión</button>
       </div>
+      <button id="photosBtn" class="wide-secondary photos-entry">📷 Fotos</button>
       <button id="historyBtn" class="wide-secondary">Ver trabajos guardados <span id="historyCount">0</span></button>
     </section>
 
@@ -129,6 +131,68 @@
         <button type="submit" class="primary">Guardar extintor</button>
         <button id="deleteEquipment" type="button" class="danger hidden">Eliminar este extintor</button>
       </form>
+    </section>
+
+    <section id="photoTypesView" class="view">
+      <div class="work-title">
+        <button class="back" data-view="homeView" aria-label="Volver">←</button>
+        <div><small>FOTOGRAFÍAS</small><h2>Seleccionar equipo</h2></div>
+      </div>
+      <div class="type-options">
+        <button id="photoExtinguisherBtn" class="type-card"><span class="type-icon">🧯</span><strong>Extintores</strong><small>Registrar defectos y fotografías</small></button>
+        <button id="photoBieBtn" class="type-card"><span class="type-icon">🚒</span><strong>BIE</strong><small>Registrar defectos y fotografías</small></button>
+      </div>
+    </section>
+
+    <section id="photoFormView" class="view">
+      <div class="work-title">
+        <button class="back" data-view="photoTypesView" aria-label="Volver">←</button>
+        <div><small>FICHA FOTOGRÁFICA</small><h2 id="photoFormTitle">Extintor</h2></div>
+      </div>
+      <form id="photoRecordForm">
+        <div class="card section-card">
+          <h3>Identificación</h3>
+          <label>Edificio <span>*</span><input id="photoBuilding" required placeholder="Nombre o ubicación del edificio"></label>
+          <label>Número <span>*</span><input id="photoNumber" required inputmode="numeric" placeholder="Número del equipo"></label>
+          <div class="grid two">
+            <label>Otro 1<input id="photoOther1" placeholder="Dato opcional"></label>
+            <label>Otro 2<input id="photoOther2" placeholder="Dato opcional"></label>
+          </div>
+        </div>
+        <div class="card section-card">
+          <h3>Defectos encontrados</h3>
+          <p class="field-help">Puedes marcar todos los defectos que correspondan.</p>
+          <div id="photoDefectList" class="defect-list"></div>
+        </div>
+        <div class="card section-card">
+          <h3>Fotografías</h3>
+          <div class="record-photo-grid">
+            <div class="record-photo-slot"><label>Foto 1<input id="photoRecordFile0" class="record-photo-input" data-index="0" type="file" accept="image/*" capture="environment"><span id="photoRecordPreview0" class="photo-placeholder">＋ Hacer foto</span></label><button id="deleteRecordPhoto0" type="button" class="delete-photo">Eliminar foto</button></div>
+            <div class="record-photo-slot"><label>Foto 2<input id="photoRecordFile1" class="record-photo-input" data-index="1" type="file" accept="image/*" capture="environment"><span id="photoRecordPreview1" class="photo-placeholder">＋ Hacer foto</span></label><button id="deleteRecordPhoto1" type="button" class="delete-photo">Eliminar foto</button></div>
+          </div>
+        </div>
+        <button id="viewPhotoRecords" type="button" class="wide-secondary table-button">▦ Ver registros en tabla</button>
+        <button type="submit" class="primary">Guardar ficha</button>
+        <button type="button" class="wide-secondary" data-view="photoTypesView">Volver atrás</button>
+      </form>
+    </section>
+
+    <section id="photoRecordsView" class="view">
+      <div class="work-title">
+        <button class="back" data-view="photoFormView" aria-label="Volver">←</button>
+        <div><small>REGISTROS FOTOGRÁFICOS</small><h2 id="photoRecordsTitle">Extintores</h2></div>
+      </div>
+      <div class="card records-filter">
+        <label>Filtrar por número<input id="photoNumberFilter" inputmode="numeric" placeholder="Escribe el número del equipo"></label>
+        <div id="photoRecordsCount" class="records-count">0 registros</div>
+      </div>
+      <div class="records-table-wrap">
+        <table class="records-table">
+          <thead><tr><th>Edificio</th><th>Número</th><th>Otro 1</th><th>Otro 2</th><th>Defectos</th><th>Fotos</th><th>Fecha</th></tr></thead>
+          <tbody id="photoRecordsBody"></tbody>
+        </table>
+        <div id="photoRecordsEmpty" class="empty hidden">No hay registros que coincidan.</div>
+      </div>
     </section>
 
     <section id="historyView" class="view">

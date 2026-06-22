@@ -1,0 +1,100 @@
+.photos-entry {
+  background: #fff8f7;
+  border-color: #d7aaa5;
+  font-size: 1.05rem;
+}
+
+.type-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.type-card {
+  min-height: 180px;
+  padding: 28px 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 7px 22px #382b2110;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.type-card .type-icon { font-size: 2.5rem; }
+.type-card strong { font-family: Georgia, serif; font-size: 1.35rem; }
+.type-card small { color: var(--muted); letter-spacing: 0; text-align: center; font-weight: 500; }
+
+.record-photo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.record-photo-input { display: none; }
+.record-photo-slot label { margin-bottom: 7px; text-align: center; }
+.record-photo-slot .photo-placeholder { min-height: 145px; }
+
+.delete-photo {
+  width: 100%;
+  padding: 9px;
+  border: 1px solid #efb5b5;
+  border-radius: 9px;
+  background: #fff6f6;
+  color: #a31515;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.delete-photo:disabled { opacity: .4; cursor: default; }
+
+.table-button { margin: 0 0 12px; }
+
+.records-filter { margin-bottom: 14px; }
+.records-filter label { margin-bottom: 8px; }
+.records-count { color: var(--muted); font-size: .85rem; }
+
+.records-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 7px 22px #382b2110;
+}
+
+.records-table {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+  font-size: .84rem;
+}
+
+.records-table th,
+.records-table td {
+  padding: 11px 12px;
+  border-right: 1px solid #e8e1dc;
+  border-bottom: 1px solid #e8e1dc;
+  text-align: left;
+  vertical-align: top;
+}
+
+.records-table th {
+  position: sticky;
+  top: 0;
+  background: #332d2a;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.records-table tbody tr:nth-child(even) { background: #faf8f6; }
+.records-table td:nth-child(2), .records-table td:nth-child(6), .records-table td:nth-child(7) { white-space: nowrap; }
+.records-table-wrap > .empty { margin: 14px; }
+
+@media (max-width: 440px) {
+  .type-options, .record-photo-grid { grid-template-columns: 1fr; }
+  .type-card { min-height: 145px; }
+}

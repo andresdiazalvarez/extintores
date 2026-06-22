@@ -2,7 +2,10 @@ const $ = id => document.getElementById(id);
 const views = [...document.querySelectorAll('.view')];
 let currentJob = null;
 let editingIndex = -1;
-let pendingPhotos = { label: '', equipment: ['', '', ''] };
+let pendingPhotos = { label: '', equipment: ['', '', '', ''] };
+let currentPhotoType = '';
+let photoRecordPhotos = ['', ''];
+let photoRecordsCache = [];
 let deferredInstall;
 
 const CHATGPT_IMPORT_PROMPT = `Convierte todos los extintores que te he dictado en un JSON válido para mi aplicación. Devuelve exclusivamente el JSON, sin explicaciones y sin bloques Markdown. Debe ser una lista con este formato exacto:
@@ -24,20 +27,27 @@ const DEFECTS = [
   'Extintor caducado.', 'Hay un obstáculo.', 'Extintor descargado.',
   'Extintor sin presión.', 'Extintor en el suelo.', 'Cristal del extintor ausente o roto.'
 ];
+const PHOTO_DEFECTS = {
+  extinguisher: [...DEFECTS, 'Sin señal.', 'Señal caducada.'],
+  bie: ['Manguera rota.', 'Hay un obstáculo.', 'Cristal roto.', 'Manómetro mal.', 'Válvula mal.', 'Lanza mal.', 'Devanadera mal.', 'Sin presión.', 'Sin señal.', 'Señal caducada.']
+};
 const MONTH_NAMES = {enero:'01',febrero:'02',marzo:'03',abril:'04',mayo:'05',junio:'06',julio:'07',agosto:'08',septiembre:'09',setiembre:'09',octubre:'10',noviembre:'11',diciembre:'12'};
 
 const dbPromise = new Promise((resolve, reject) => {
-  const request = indexedDB.open('extintores-db', 1);
-  request.onupgradeneeded = () => request.result.createObjectStore('jobs', { keyPath: 'id' });
+  const request = indexedDB.open('extintores-db', 2);
+  request.onupgradeneeded = () => {
+    if (!request.result.objectStoreNames.contains('jobs')) request.result.createObjectStore('jobs', { keyPath: 'id' });
+    if (!request.result.objectStoreNames.contains('photoRecords')) request.result.createObjectStore('photoRecords', { keyPath: 'id' });
+  };
   request.onsuccess = () => resolve(request.result);
   request.onerror = () => reject(request.error);
 });
 
-async function dbAction(mode, action) {
+async function dbAction(mode, action, storeName = 'jobs') {
   const db = await dbPromise;
   return new Promise((resolve, reject) => {
-    const tx = db.transaction('jobs', mode);
-    const store = tx.objectStore('jobs');
+    const tx = db.transaction(storeName, mode);
+    const store = tx.objectStore(storeName);
     const req = action(store);
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -47,6 +57,8 @@ const saveJob = job => dbAction('readwrite', store => store.put(job));
 const getJob = id => dbAction('readonly', store => store.get(id));
 const getJobs = () => dbAction('readonly', store => store.getAll());
 const deleteJob = id => dbAction('readwrite', store => store.delete(id));
+const savePhotoRecord = record => dbAction('readwrite', store => store.put(record), 'photoRecords');
+const getPhotoRecords = () => dbAction('readonly', store => store.getAll(), 'photoRecords');
 const createId = () => globalThis.crypto?.randomUUID?.() || `trabajo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 function initializeDateSelectors() {
@@ -222,6 +234,58 @@ function setPreview(element, dataUrl) {
   element.style.backgroundImage = dataUrl ? `url(${dataUrl})` : '';
 }
 
+function openPhotoForm(type) {
+  currentPhotoType = type;
+  photoRecordPhotos = ['', ''];
+  $('photoFormTitle').textContent = type === 'bie' ? 'BIE' : 'Extintor';
+  $('photoRecordForm').reset();
+  $('photoDefectList').innerHTML = PHOTO_DEFECTS[type].map(defect => `<label><input type="checkbox" name="photoDefect" value="${escapeHtml(defect)}"><span>${escapeHtml(defect.replace(/\.$/, ''))}</span></label>`).join('');
+  document.querySelectorAll('.record-photo-input').forEach(input => { input.value = ''; });
+  refreshRecordPhotoPreviews();
+  showView('photoFormView');
+}
+
+async function openPhotoRecords() {
+  $('photoRecordsTitle').textContent = currentPhotoType === 'bie' ? 'BIE' : 'Extintores';
+  $('photoNumberFilter').value = '';
+  try {
+    photoRecordsCache = (await getPhotoRecords())
+      .filter(record => record.type === currentPhotoType)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    renderPhotoRecords();
+    showView('photoRecordsView');
+  } catch { toast('No se pudieron leer los registros guardados'); }
+}
+
+function renderPhotoRecords() {
+  const query = $('photoNumberFilter').value.trim().toLowerCase();
+  const records = photoRecordsCache.filter(record => String(record.number || '').toLowerCase().includes(query));
+  $('photoRecordsCount').textContent = `${records.length} registro${records.length === 1 ? '' : 's'}`;
+  $('photoRecordsEmpty').classList.toggle('hidden', records.length > 0);
+  $('photoRecordsBody').innerHTML = records.map(record => {
+    const defects = (record.defects || []).map(escapeHtml).join('<br>') || '—';
+    const photos = (record.photos || []).filter(Boolean).length;
+    const date = record.createdAt ? new Date(record.createdAt).toLocaleDateString('es-ES') : '—';
+    return `<tr><td>${escapeHtml(record.building)}</td><td><strong>${escapeHtml(record.number)}</strong></td><td>${escapeHtml(record.other1 || '—')}</td><td>${escapeHtml(record.other2 || '—')}</td><td>${defects}</td><td>${photos}</td><td>${date}</td></tr>`;
+  }).join('');
+}
+
+function refreshRecordPhotoPreviews() {
+  photoRecordPhotos.forEach((photo, index) => {
+    setPreview($(`photoRecordPreview${index}`), photo);
+    $(`deleteRecordPhoto${index}`).disabled = !photo;
+  });
+}
+
+async function readRecordPhoto(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  try {
+    photoRecordPhotos[Number(input.dataset.index)] = await compressImage(file);
+    refreshRecordPhotoPreviews();
+  } catch { toast('No se pudo procesar esta fotografía'); }
+}
+
 async function compressImage(file) {
   const bitmap = await createImageBitmap(file);
   const max = 1280;
@@ -365,6 +429,35 @@ $('startBtn').onclick = async () => {
   currentJob = { id: createId(), client, operator, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(), equipment:[] };
   renderWork(); showView('workView');
   try { await saveJob(currentJob); } catch { toast('La revisión ha comenzado, pero el historial no está disponible en este navegador'); }
+};
+$('photosBtn').onclick = () => showView('photoTypesView');
+$('photoExtinguisherBtn').onclick = () => openPhotoForm('extinguisher');
+$('photoBieBtn').onclick = () => openPhotoForm('bie');
+$('viewPhotoRecords').onclick = openPhotoRecords;
+$('photoNumberFilter').addEventListener('input', renderPhotoRecords);
+document.querySelectorAll('.record-photo-input').forEach(input => input.onchange = event => readRecordPhoto(event.target));
+[0, 1].forEach(index => {
+  $(`deleteRecordPhoto${index}`).onclick = () => {
+    photoRecordPhotos[index] = '';
+    $(`photoRecordFile${index}`).value = '';
+    refreshRecordPhotoPreviews();
+    toast(`Foto ${index + 1} eliminada`);
+  };
+});
+$('photoRecordForm').onsubmit = async event => {
+  event.preventDefault();
+  const record = {
+    id: createId(), type: currentPhotoType,
+    building: $('photoBuilding').value.trim(), number: $('photoNumber').value.trim(),
+    other1: $('photoOther1').value.trim(), other2: $('photoOther2').value.trim(),
+    defects: [...document.querySelectorAll('input[name="photoDefect"]:checked')].map(input => input.value),
+    photos: [...photoRecordPhotos], createdAt: new Date().toISOString()
+  };
+  try {
+    await savePhotoRecord(record);
+    showView('photoTypesView');
+    toast(`Ficha de ${currentPhotoType === 'bie' ? 'BIE' : 'extintor'} guardada en el móvil`);
+  } catch { toast('No se pudo guardar la ficha en este dispositivo'); }
 };
 $('addBtn').onclick = () => openForm();
 $('importBtn').onclick = () => { $('importText').value = ''; showView('importView'); };
