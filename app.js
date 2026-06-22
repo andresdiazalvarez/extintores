@@ -494,7 +494,6 @@ async function generatePhotoRecordsExcel() {
     const lastColumn = excelColumn(headers.length - 1), lastRow = rows.length;
     xml = xml.replace(/<(?:x:)?dimension ref="[^"]+"\s*\/>/, `<${prefix}dimension ref="A1:${lastColumn}${lastRow}"/>`);
     xml = xml.replace(/<(?:x:)?autoFilter ref="[^"]+"\s*\/>/g, '');
-    xml = xml.replace(`</${prefix}worksheet>`, `<${prefix}autoFilter ref="A1:${lastColumn}${lastRow}"/></${prefix}worksheet>`);
     files[sheetPath] = strToU8(xml);
     const blob = new Blob([zipSync(files, { level: 6 })], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const typeName = currentPhotoType === 'bie' ? 'BIE' : 'Extintores';
