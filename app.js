@@ -467,36 +467,50 @@ function xlsxInlineCell(ref, value, style, prefix = '') {
 async function generatePhotoRecordsExcel() {
   if (!photoRecordsCache.length) return toast('No hay registros para descargar');
   try {
-    const { unzipSync, zipSync, strFromU8, strToU8 } = await import('./vendor/fflate.js');
-    const response = await fetch('./Plantilla_Registros_Fotos.xlsx');
-    if (!response.ok) throw new Error('No se encontró la plantilla Excel');
-    const files = unzipSync(new Uint8Array(await response.arrayBuffer()));
-    const sheetPath = 'xl/worksheets/sheet1.xml';
-    let xml = strFromU8(files[sheetPath]);
-    const prefix = xml.includes('<x:worksheet') ? 'x:' : '';
-    const cellTag = ref => xml.match(new RegExp(`<(?:x:)?c\\b[^>]*\\br="${ref}"[^>]*>`))?.[0] || '';
-    const styleOf = ref => cellTag(ref).match(/\bs="([^"]+)"/)?.[1] || '';
-    const headerStyle = styleOf('A1'), dataStyle = styleOf('A2');
+    const Excel = globalThis.ExcelJS;
+    if (!Excel) throw new Error('No se ha cargado el generador Excel');
+    const workbook = new Excel.Workbook();
+    workbook.creator = 'Extintores';
+    workbook.created = new Date();
+    const typeName = currentPhotoType === 'bie' ? 'BIE' : 'Extintores';
+    const sheet = workbook.addWorksheet(typeName, { views: [{ state: 'frozen', ySplit: 1 }] });
     const defects = PHOTO_DEFECTS[currentPhotoType];
     const headers = ['Fecha', 'Edificio', 'Número', 'Otro 1', 'Otro 2', ...defects.map(defect => defect.replace(/\.$/, '')), 'Foto 1', 'Foto 2'];
-    const rows = [headers, ...photoRecordsCache.map(record => [
-      record.createdAt ? new Date(record.createdAt).toLocaleString('es-ES') : '',
-      record.building || '', record.number || '', record.other1 || '', record.other2 || '',
-      ...defects.map(defect => (record.defects || []).includes(defect) ? 'X' : ''),
-      record.photos?.[0] ? 'Sí' : 'No', record.photos?.[1] ? 'Sí' : 'No'
-    ])];
-    const sheetData = rows.map((row, rowIndex) => {
-      const rowNumber = rowIndex + 1, style = rowIndex === 0 ? headerStyle : dataStyle;
-      const cells = row.map((value, columnIndex) => xlsxInlineCell(`${excelColumn(columnIndex)}${rowNumber}`, value, style, prefix)).join('');
-      return `<${prefix}row r="${rowNumber}"${rowIndex === 0 ? ' ht="34" customHeight="1"' : ''}>${cells}</${prefix}row>`;
-    }).join('');
-    xml = xml.replace(/<(?:x:)?sheetData>[\s\S]*?<\/(?:x:)?sheetData>/, `<${prefix}sheetData>${sheetData}</${prefix}sheetData>`);
-    const lastColumn = excelColumn(headers.length - 1), lastRow = rows.length;
-    xml = xml.replace(/<(?:x:)?dimension ref="[^"]+"\s*\/>/, `<${prefix}dimension ref="A1:${lastColumn}${lastRow}"/>`);
-    xml = xml.replace(/<(?:x:)?autoFilter ref="[^"]+"\s*\/>/g, '');
-    files[sheetPath] = strToU8(xml);
-    const blob = new Blob([zipSync(files, { level: 6 })], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const typeName = currentPhotoType === 'bie' ? 'BIE' : 'Extintores';
+    sheet.addRow(headers);
+    sheet.columns = headers.map((_, index) => ({ width: index === 0 ? 20 : index === 1 ? 25 : index === 2 ? 14 : index < 5 ? 18 : index >= headers.length - 2 ? 25 : 22 }));
+    const header = sheet.getRow(1);
+    header.height = 34;
+    header.eachCell(cell => {
+      cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFB91C1C'} };
+      cell.font = { bold:true, color:{argb:'FFFFFFFF'} };
+      cell.alignment = { vertical:'middle', horizontal:'center', wrapText:true };
+      cell.border = { bottom:{style:'thin',color:{argb:'FF8C1515'}}, right:{style:'thin',color:{argb:'FF8C1515'}} };
+    });
+    const photoStartIndex = 5 + defects.length;
+    photoRecordsCache.forEach(record => {
+      const row = sheet.addRow([
+        record.createdAt ? new Date(record.createdAt) : '', record.building || '', String(record.number || ''),
+        record.other1 || '', record.other2 || '', ...defects.map(defect => (record.defects || []).includes(defect) ? 'X' : ''), '', ''
+      ]);
+      row.height = (record.photos || []).some(Boolean) ? 95 : 28;
+      row.getCell(1).numFmt = 'dd/mm/yyyy hh:mm';
+      row.eachCell({ includeEmpty:true }, (cell, columnNumber) => {
+        cell.alignment = { vertical:'top', horizontal: columnNumber >= 6 && columnNumber < photoStartIndex + 1 ? 'center' : 'left', wrapText:true };
+        cell.border = { bottom:{style:'thin',color:{argb:'FFDED7D1'}}, right:{style:'thin',color:{argb:'FFDED7D1'}} };
+      });
+      [0, 1].forEach(photoIndex => {
+        const photo = record.photos?.[photoIndex];
+        if (!photo) { row.getCell(photoStartIndex + photoIndex + 1).value = 'Sin foto'; return; }
+        const imageId = workbook.addImage({ base64: photo, extension:'jpeg' });
+        sheet.addImage(imageId, {
+          tl: { col: photoStartIndex + photoIndex + 0.08, row: row.number - 1 + 0.08 },
+          ext: { width: 155, height: 115 }, editAs:'oneCell'
+        });
+      });
+    });
+    sheet.autoFilter = { from:'A1', to:`${excelColumn(headers.length - 1)}1` };
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `Registros_${typeName}_${new Date().toISOString().slice(0,10)}.xlsx`;
